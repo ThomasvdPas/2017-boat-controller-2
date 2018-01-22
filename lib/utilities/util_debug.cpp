@@ -10,6 +10,6 @@
 #include "rtos.h"
 
 #ifdef DEBUG
-Serial pc(D8, D2); //& PA_9 = D8, PA_10 = D2
+Serial pc(PA_9, PA_10); //& PA_9 = D8, PA_10 = D2
 Mutex pcMutex;
 #endif

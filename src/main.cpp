@@ -20,7 +20,7 @@
 #include <utilities.h>
 // #include "CANHardwareAcceptanceFilter.h"   //TODO: Make CAN Acceptance filter
 #include <MaxonMotor.h>
-// #include <Flash.h>        		              //TODO: Create flash
+// #include <Flash.h>                             //TODO: Create flash
 #include <HeightSensor.h>
 #include <Xsens.h>
 #include <XsensDataParser.h>
@@ -30,21 +30,22 @@
 #include <MaxonDriver.h>
 #include <SenixManager.h>
 #include <SteerManager.h>
+#include <util_debug.h>
 
-//#include "Logger.h"
+#include "Logger.h"
 
-// extern "C" void NVIC_SystemReset();
+extern "C" void NVIC_SystemReset();
 using namespace sbt;
 
 extern Serial pc;
 extern Mutex pcMutex;
 
-MODSERIAL xsensSerial(PA_0, PA_1, 100, XSENS_READ_BUFF_SIZE); // tx, rx
+MODSERIAL xsensSerial(PA_0, PA_1, 100, XSENS_READ_BUFF_SIZE); // tx, rx  //TODO: second 100 was: XSENS_READ_BUFF_SIZE
 Xsens xsens(&xsensSerial);
 
 
-CAN canBus(PA_12, PA_13);     // TODO: Check if this is correct
-CAN canMaxon(PB_5, PB_6);     // TODO: Check if this is correct
+CAN canBus(PB_12, PB_13);     // TODO: Check if this is correct
+CAN canMaxon(PA_11, PA_12);     // TODO: Check if this is correct
 // Flash flash;
 
 MODSERIAL heightSensor1Serial(PA_2, PA_3, 100, 100); // tx, rx
@@ -174,7 +175,7 @@ void checkCanBuffer(){
                 } else if(m.id == RESET_SYSTEM_ID) {
                         systemReset();
                 }
-                // else {           		//TODO: create flash
+                // else {                       //TODO: create flash
                 //         flash.parseCanMessage(m);
                 // }
         }
@@ -389,6 +390,7 @@ void checkGPS(){
 //---------------------Sensors-----------------------------------------------------------------------------------'
 //Fuctions for Senix readings
 void senixRxISR1(MODSERIAL_IRQ_INFO *info){
+
         /*
          * This function releases the semaphore flag when the UART receives the first data message from the sensor
          */
@@ -595,23 +597,21 @@ void senixManagerThread(void const *TID) {
 }
 
 
-Serial pc2(D8, D2); // TX, RX
+Serial pc2(PA_9, PA_10); // TX, RX
 DigitalOut led1(LED1);
 
 //Main--------------------------------------------------------------------------------------------------------------
 int main() {
-      pc2.format(8, Serial::None, 1);
-      pc2.baud(57600);
-      pc2.printf("\r\nHello!\r\n");
-      pc2.printf("\r\nSolar Boat Height Control 2018.\n");
-      pc.printf("\r\nSolar Boat Height Control 2018.\n");
-      while(1){
-            led1 = 0;
-      }
+        pc2.format(8, Serial::None, 1);
+        pc2.baud(57600);
+        pc2.printf("\r\nHello!\r\n");
+        pc2.printf("\r\nSolar Boat Height Control 2018.\n");
 
 
 
+        pc2.printf("\r\n2Solar Boat Height Control 2018.\n");
 #ifdef DEBUG
+        pc2.printf("\r\n3Solar Boat Height Control 2018.\n");
         PRINT("\r\nSolar Boat Height Control 2018.\n");
 #endif
         mainTID = osThreadGetId();
