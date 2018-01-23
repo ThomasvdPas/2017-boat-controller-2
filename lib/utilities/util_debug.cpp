@@ -8,8 +8,9 @@
 #include "util_debug.h"
 #include "mbed.h"
 #include "rtos.h"
+#include "MODSERIAL.h"
 
 #ifdef DEBUG
-Serial pc(PA_9, PA_10); //& PA_9 = D8, PA_10 = D2
+MODSERIAL pc(PA_9, PA_10,100,100); //& PA_9 = D8, PA_10 = D2
 Mutex pcMutex;
 #endif

@@ -37,15 +37,15 @@
 extern "C" void NVIC_SystemReset();
 using namespace sbt;
 
-extern Serial pc;
+extern MODSERIAL pc;
 extern Mutex pcMutex;
-
+//
 MODSERIAL xsensSerial(PA_0, PA_1, 100, XSENS_READ_BUFF_SIZE); // tx, rx  //TODO: second 100 was: XSENS_READ_BUFF_SIZE
 Xsens xsens(&xsensSerial);
 
 
-CAN canBus(PB_12, PB_13);     // TODO: Check if this is correct
-CAN canMaxon(PA_11, PA_12);     // TODO: Check if this is correct
+CAN canBus(PA_11, PA_12);     // TODO: Check if this is correct
+CAN canMaxon(PB_12, PB_13);     // TODO: Check if this is correct
 // Flash flash;
 
 MODSERIAL heightSensor1Serial(PA_2, PA_3, 100, 100); // tx, rx
@@ -511,6 +511,7 @@ void evaluatePID(PIDData data) {
 
 
 void processHeight(void const *TID) {
+      PRINT("Inside process height.")
         senixHeight = 0;
         float prevSenixHeight = 0;
         int senixFails = 0;
@@ -525,15 +526,12 @@ void processHeight(void const *TID) {
                 if (heightSensor1.getAge() < 500) {
                         float a = heightSensor1.getHeight();
                         senixHeight = senixHeight * .8f + a * .2f;
-//			PRINT("a: %f, b: %f\n", a, b);
+                  PRINT("%f", heightSensor1.getHeight());
                 } else if (heightSensor1.getAge() < 500) {
                         senixHeight = senixHeight * .8f + heightSensor1.getHeight() * .2f;
 //			PRINT("a: %f\n", senixHeight);
                         //TODO report communication lost heightsensor1
                 }
-
-
-
                 xsens.xsensData_mutex->lock();
 //			senixHeight = senixHeight * cos((xsens.xsensData.rotation.roll + XSENS_ROLL_BIAS_CORRECTION) /180*PI);
 
@@ -573,7 +571,6 @@ void processHeight(void const *TID) {
                         pidData.alpha_eq = 0.000075f * pow(v, 4) - 0.0035f * pow(v, 3) + 0.06f * pow(v, 2) - 0.47f * v + 1.4f;
                         previousVelocity = v;
                 }
-
                 evaluatePID(pidData);
 
                 // This allows rolling when heightcontrol is off
@@ -597,21 +594,17 @@ void senixManagerThread(void const *TID) {
 }
 
 
-Serial pc2(PA_9, PA_10); // TX, RX
+// Serial pc2(USBTX, USBRX); // TX, RX
 DigitalOut led1(LED1);
 
 //Main--------------------------------------------------------------------------------------------------------------
 int main() {
-        pc2.format(8, Serial::None, 1);
-        pc2.baud(57600);
-        pc2.printf("\r\nHello!\r\n");
-        pc2.printf("\r\nSolar Boat Height Control 2018.\n");
+        // pc2.format(8, Serial::None, 1);
+        // pc2.baud(57600);
+        // pc2.printf("\r\nHello!\r\n");
+        // pc2.printf("\r\nSolar Boat Height Control 2018.\n");
 
-
-
-        pc2.printf("\r\n2Solar Boat Height Control 2018.\n");
 #ifdef DEBUG
-        pc2.printf("\r\n3Solar Boat Height Control 2018.\n");
         PRINT("\r\nSolar Boat Height Control 2018.\n");
 #endif
         mainTID = osThreadGetId();
@@ -624,7 +617,7 @@ int main() {
 
         // set can frequency
         canBus.frequency(CAN_FREQUENCY);
-        canMaxon.frequency(CAN_FREQUENCY);
+        // canMaxon.frequency(CAN_FREQUENCY);
 
         // add can interrupt handler
         canBus.attach(&canBusIsr);
@@ -681,6 +674,13 @@ int main() {
 
         // watchdog.kick();       // TODO: Write watchdog
 
+        #ifdef DEBUG
+                PRINT("\r\nSolar Boat Height Control 2018 finished.\n");
+        #endif
+       //  while(1){
+       //       led1 = !led1;
+       //       wait(0.5);
+       // }
         while(1) {
                 senixManager->thread();
         }
