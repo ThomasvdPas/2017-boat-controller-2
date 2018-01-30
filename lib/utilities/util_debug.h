@@ -10,17 +10,13 @@
 
 #include "mbed.h"
 
-#define USE_TIMEOUT 1
 #define DEBUG 1
-//#define LOGGER 1
-
+#define USE_TIMEOUT 1
 
 #ifdef DEBUG
-	#define PRINT(...) pcMutex.lock();\
-	pc.baud(57600); \
+	#define PRINT(...) pc.baud(57600); \
 	pc.printf(__VA_ARGS__);\
-	pc.printf("\r");\
-	pcMutex.unlock();
+	pc.printf("\r");
 #else
 	#define PRINT(...)
 #endif

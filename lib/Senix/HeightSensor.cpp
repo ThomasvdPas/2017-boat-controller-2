@@ -5,40 +5,23 @@
  *      Author: boris
  */
 
-#include "mbed.h"
-#include "rtos.h"
-#include "MODSERIAL.h"
-#include "utilities.h"
+
 #include "HeightSensor.h"
 
+#include "MODSERIAL.h"
+#include "../utilities/Config.h"
+#include "util_debug.h"
 
-extern Serial pc;
-extern Mutex pcMutex;
+MODSERIAL heightSensor1Serial(PA_2, PA_3,100,100); // tx, rx
+HeightSensor heightSensor1(&heightSensor1Serial);
 
-
-void modserialPutArray(MODSERIAL* s, char array[], int length) {
-        for(int i=0; i<length; i++) {
-                s->putc(array[i]);
-        }
-}
-
-void modserialPutArray(MODSERIAL* s, uint8_t array[], int length) {
-        for(int i=0; i<length; i++) {
-                //PRINT("0x%x\n", array[i]);
-                s->putc(array[i]);
-        }
-}
-
-namespace sbt {
-uint8_t senixBuffer[HEIGHT_SENSOR_GET_HEIGHT_BUFFER_LENGTH];
-char ASCIIStreamBuffer[100];
+extern MODSERIAL pc;
 
 
-HeightSensor::HeightSensor(MODSERIAL* s, uint8_t id) : interval(0), transmittedPulses(0), filters(0), numberOfSamplesToBeAveraged(0) {
+HeightSensor::HeightSensor(MODSERIAL* s) : interval(0), transmittedPulses(0), filters(0), numberOfSamplesToBeAveraged(0) {
         this->s = s;
-        this->nodeID = id;
         this->sem = new Semaphore(1);
-        this->s->baud(HEIGHT_SENSOR_FRONT_BAUD_RATE);
+        this->s->baud(HEIGHT_SENSOR_FRONT_BUAD_RATE);
         this->s->rxBufferFlush();
         this->height = 0.0f;
         this->mutex = new Mutex();
@@ -48,21 +31,7 @@ HeightSensor::HeightSensor(MODSERIAL* s, uint8_t id) : interval(0), transmittedP
         this->statisticsReset();
 
         //TODO make this configurable
-        this->senixHeightOffset = 0.22f;
-}
-
-void HeightSensor::CANReport(CanManager *canManager, HeightSensor *other) {
-        two_int16_to_4_bytes_t senixMessage;
-        senixMessage.i[0] = (int16_t)(this->height  * 200);
-        senixMessage.i[1] = (int16_t)(other->height * 200);
-        int canId = REPORT_TO_CAN_SENIX;
-        canManager->writeCan(canId, senixMessage.c, 4);
-}
-
-void HeightSensor::CANReportStatistics (CanManager *canManager) {
-        if (this->statisticsTimer->read_ms() >= SENIX_REPORT_STATISTICS_INTERVAL) {
-                this->flushStatistics(canManager);
-        }
+        this->senixHeightOffset = 0.22f;        // TODO: Check with current boat
 }
 
 void HeightSensor::statisticsReset() {
@@ -79,25 +48,6 @@ void HeightSensor::statisticsReset() {
         this->statisticsTimer->start();
 }
 
-void HeightSensor::flushStatistics(CanManager *canManager) {
-        this->stat_stdev = sqrt(this->stat_stdev/(float)this->stat_stdev_count);
-        this->stat_pps /= this->statisticsTimer->read_ms()/1000.0f;
-        this->stat_eptp/=10.0f;
-        this->stat_fptp/=10.0f;
-        this->stat_tptp/=10.0f;
-        PRINT("STATS: pps: %f, etpt: %d, stdev: %f, high/low: %f/%f, filter: %d timeout: %d\n",
-              this->stat_pps, this->stat_eptp, this->stat_stdev, this->stat_high, this->stat_low,
-              this->stat_fptp, this->stat_tptp);
-
-//		two_int16_to_4_bytes_t senixMessage;
-//		senixMessage.i[0] = (int16_t)(this->height  * 20000);
-//		senixMessage.i[1] = (int16_t)(other->height * 20000);
-//		int canId = REPORT_TO_CAN_SENIX;
-//		canManager->writeCan(canId, senixMessage.c, 4);
-
-        this->statisticsReset();
-
-}
 
 void HeightSensor::thread(void const *TID) {
         ageTimer.start();
@@ -110,48 +60,37 @@ void HeightSensor::thread(void const *TID) {
         PRINT("Senix thread started \n");
 
         while(1) {
-
                 this->sem->wait();
-
-                idle = true;
-                Thread::signal_wait(0x4);
+                // Thread::signal_wait(0x4);          //TODO: Ask what signal wait does.
                 // The height is requested in the senixManager
-                HeightSensorException ex = this->waitForReply(this->buffer, 7);
+                this->waitForReply(this->buffer, 7);
                 this->stat_pps++;
-                if (ex == HeightSensorException::noException) {
-
-                        uint16_t data = this->buffer[3] * 0xFF + this->buffer[4];
-                        float newHeight = (float)(data)/115.0f;
-                        float diff = max(height, newHeight) - min(height, newHeight);
-                        float diffLastMeasured = max(lastMeasured, newHeight) - min(lastMeasured, newHeight);
-                        if (height == 0.0f || (newHeight > 0.0f && newHeight < 100.0f && (diff < 15.0f || diffLastMeasured < 10.0f))) {
-                                this->mutex->lock();
-                                this->height = newHeight;
-                                this->mutex->unlock();
-                                this->stat_stdev += diff * diff;
-                                this->stat_stdev_count++;
-                                this->stat_high = max(this->height, this->stat_high);
-                                this->stat_low = min(this->height, this->stat_low);
-                                ageTimer.reset();
-                                ageTimer.start();
-                        } else {
-                                if (newHeight < 0.0f) {
-                                        this->stat_tptp++;
-                                } else {
-                                        this->stat_fptp++;
-                                }
-                        }
-
-                        lastMeasured = newHeight;
-                        this->processThread->signal_set(0x1);
+                uint16_t data = this->buffer[3] * 0xFF + this->buffer[4];
+                float newHeight = (float)(data)/115.0f;
+                PRINT("Senix Height: %f\n", newHeight);
+                float diff = max(height, newHeight) - min(height, newHeight);
+                float diffLastMeasured = max(lastMeasured, newHeight) - min(lastMeasured, newHeight);
+                if (height == 0.0f || (newHeight > 0.0f && newHeight < 100.0f && (diff < 15.0f || diffLastMeasured < 10.0f))) {
+                        this->mutex->lock();
+                        this->height = newHeight;
+                        this->mutex->unlock();
+                        this->stat_stdev += diff * diff;
+                        this->stat_stdev_count++;
+                        this->stat_high = max(this->height, this->stat_high);
+                        this->stat_low = min(this->height, this->stat_low);
+                        ageTimer.reset();
+                        ageTimer.start();
                 } else {
-                        this->stat_eptp++;
-                        //TODO report to CAN
-                        //writeCanError(CanErrorCategory::heightsensor2, (uint8_t) senixException);
-                        //PRINT("senixerror: %d\n", senixException);
-                        senixerrorcounter++;
-                        this->processThread->signal_set(0x1);
+                        if (newHeight < 0.0f) {
+                                this->stat_tptp++;
+                        } else {
+                                this->stat_fptp++;
+                        }
                 }
+
+                lastMeasured = newHeight;
+                this->processThread->signal_set(0x1);
+
 
                 senixcounter++;
                 if (senixcounter == 2000) {
@@ -164,187 +103,18 @@ void HeightSensor::thread(void const *TID) {
         }
 }
 
-int HeightSensor::getAge() {
-        return ageTimer.read_ms();
-}
-
 float HeightSensor::getHeight() {
         mutex->lock();
         float k = height/100.0f - this->senixHeightOffset;
-//		PRINT("senix: %f %f %f\n", height/100.0f, this->senixHeightOffset, k);
+        // PRINT("senix: %f %f %f\n", height/100.0f, this->senixHeightOffset, k);
         mutex->unlock();
         return k;
 }
 
-uint16_t HeightSensor::getFilters() const {
-        return filters;
+int HeightSensor::getAge() {
+        return ageTimer.read_ms();
 }
 
-uint32_t HeightSensor::getInterval() const {
-        return interval;
-}
-
-uint8_t HeightSensor::getNumberOfSamplesToBeAveraged() const {
-        return numberOfSamplesToBeAveraged;
-}
-
-uint16_t HeightSensor::getTransmittedPulses() const {
-        return transmittedPulses;
-}
-
-
-void HeightSensor::requestSettings() {
-        uint8_t message[8] = {
-                HEIGHT_MESSAGE_REQUEST_SETTINGS_ADDRESS,
-                HEIGHT_MESSAGE_REQUEST_SETTINGS_FUNC_CODE,
-                HEIGHT_MESSAGE_REQUEST_SETTINGS_START_ADDR_MSB,
-                HEIGHT_MESSAGE_REQUEST_SETTINGS_START_ADDR_LSB,
-                HEIGHT_MESSAGE_REQUEST_SETTINGS_REG_COUNT_MSB,
-                HEIGHT_MESSAGE_REQUEST_SETTINGS_REG_COUNT_LSB,
-                HEIGHT_MESSAGE_REQUEST_SETTINGS_CRC_LSB,
-                HEIGHT_MESSAGE_REQUEST_SETTINGS_CRC_MSB
-        };
-        modserialPutArray(s, message, 8);
-}
-
-void HeightSensor::requestHeight() {
-        uint8_t message[8] = {
-                HEIGHT_MESSAGE_REQUEST_ADDRESS,
-                HEIGHT_MESSAGE_REQUEST_FUNC_CODE,
-                HEIGHT_MESSAGE_REQUEST_START_ADDR_MSB,
-                HEIGHT_MESSAGE_REQUEST_START_ADDR_LSB,
-                HEIGHT_MESSAGE_REQUEST_REG_COUNT_MSB,
-                HEIGHT_MESSAGE_REQUEST_REG_COUNT_LSB,
-                HEIGHT_MESSAGE_REQUEST_CRC_LSB,
-                HEIGHT_MESSAGE_REQUEST_CRC_MSB
-        };
-        modserialPutArray(s, message, 8);
-}
-
-HeightSensorException HeightSensor::setFilters(uint16_t filters) {
-        uint8_t filters_msb = (filters >> 8) & 0xFF;
-        uint8_t filters_lsb = (filters >> 0) & 0xFF;
-        uint8_t message[11] = {
-                HEIGHT_SENSOR_SET_FILTER_ADDRESS,
-                HEIGHT_SENSOR_SET_FILTER_FUNC_CODE,
-                HEIGHT_SENSOR_SET_FILTER_START_ADDR_MSB,
-                HEIGHT_SENSOR_SET_FILTER_START_ADDR_LSB,
-                HEIGHT_SENSOR_SET_FILTER_REG_COUNT_MSB,
-                HEIGHT_SENSOR_SET_FILTER_REG_COUNT_LSB,
-                HEIGHT_SENSOR_SET_FILTER_TOTAL_BYTE_COUNT,
-                filters_msb,
-                filters_lsb
-        };
-        uint16_t crc = CRC16(message,9);
-        message[9] = crc & 0xFF;
-        message[10] = crc >> 8;
-        modserialPutArray(s, message, 11);
-        if(clearBuffer(8) == HeightSensorException::timeout) {
-                return HeightSensorException::setFilters;
-        }
-        this->filters = filters;
-        return HeightSensorException::noException;
-}
-
-HeightSensorException HeightSensor::setNumberOfSamplesToBeAveraged(uint8_t numberOfSamples) {
-        uint8_t outputLimitingFilterInput = 0;
-        uint8_t message[11] = {
-                HEIGHT_SENSOR_SET_NO_OF_SAMPLES_TO_BE_AVERAGED_ADDRESS,
-                HEIGHT_SENSOR_SET_NO_OF_SAMPLES_TO_BE_AVERAGED_FUNC_CODE,
-                HEIGHT_SENSOR_SET_NO_OF_SAMPLES_TO_BE_AVERAGED_START_ADDR_MSB,
-                HEIGHT_SENSOR_SET_NO_OF_SAMPLES_TO_BE_AVERAGED_START_ADDR_LSB,
-                HEIGHT_SENSOR_SET_NO_OF_SAMPLES_TO_BE_AVERAGED_REG_COUNT_MSB,
-                HEIGHT_SENSOR_SET_NO_OF_SAMPLES_TO_BE_AVERAGED_REG_COUNT_LSB,
-                HEIGHT_SENSOR_SET_NO_OF_SAMPLES_TO_BE_AVERAGED_TOTAL_BYTE_COUNT,
-                outputLimitingFilterInput,
-                numberOfSamples
-        };
-        uint16_t crc = CRC16(message,9);
-        message[9] = crc & 0xFF;
-        message[10] = crc >> 8;
-        modserialPutArray(s, message, 11);
-        if(clearBuffer(8) == HeightSensorException::timeout) {
-                return HeightSensorException::setNumberOfSamplesToBeAveraged;
-        }
-        this->numberOfSamplesToBeAveraged = numberOfSamples;
-        return HeightSensorException::noException;
-}
-
-HeightSensorException HeightSensor::setInterval(uint32_t interval) {
-        uint8_t msw_msb = (interval >> 24) & 0xFF;
-        uint8_t msw_lsb = (interval >> 16) & 0xFF;
-        uint8_t lsw_msb = (interval >> 8)  & 0xFF;
-        uint8_t lsw_lsb = (interval >> 0)  & 0xFF;
-        uint8_t message[13] = {
-                HEIGHT_SENSOR_SET_INTERVAL_ADDRESS,
-                HEIGHT_SENSOR_SET_INTERVAL_FUNC_CODE,
-                HEIGHT_SENSOR_SET_INTERVAL_START_ADDR_MSB,
-                HEIGHT_SENSOR_SET_INTERVAL_START_ADDR_LSB,
-                HEIGHT_SENSOR_SET_INTERVAL_REG_COUNT_MSB,
-                HEIGHT_SENSOR_SET_INTERVAL_REG_COUNT_LSB,
-                HEIGHT_SENSOR_SET_INTERVAL_TOTAL_BYTE_COUNT,
-                msw_msb,
-                msw_lsb,
-                lsw_msb,
-                lsw_lsb
-        };
-        uint16_t crc = CRC16(message,11);
-        message[11] = crc & 0xFF;
-        message[12] = crc >> 8;
-        modserialPutArray(s, message, 13);
-        if(clearBuffer(8) == HeightSensorException::timeout) {
-                return HeightSensorException::setInterval;
-        }
-        this->interval = interval;
-        return HeightSensorException::noException;
-}
-
-HeightSensorException HeightSensor::setTransmittedPulses(uint16_t pulses) {
-        uint8_t pulses_msb = (pulses >> 8) & 0xFF;
-        uint8_t pulses_lsb = (pulses >> 0) & 0xFF;
-        uint8_t message[11] = {
-                HEIGHT_SENSOR_SET_FILTER_ADDRESS,
-                HEIGHT_SENSOR_SET_FILTER_FUNC_CODE,
-                HEIGHT_SENSOR_SET_FILTER_START_ADDR_MSB,
-                HEIGHT_SENSOR_SET_FILTER_START_ADDR_LSB,
-                HEIGHT_SENSOR_SET_FILTER_REG_COUNT_MSB,
-                HEIGHT_SENSOR_SET_FILTER_REG_COUNT_LSB,
-                HEIGHT_SENSOR_SET_FILTER_TOTAL_BYTE_COUNT,
-                pulses_msb,
-                pulses_lsb
-        };
-        uint16_t crc = CRC16(message,9);
-        message[9] = crc & 0xFF;
-        message[10] = crc >> 8;
-        modserialPutArray(s, message, 11);
-        if(clearBuffer(8) == HeightSensorException::timeout) {
-                return HeightSensorException::setTransmittedPulses;
-        }
-        this->transmittedPulses = pulses;
-        return HeightSensorException::noException;
-}
-
-
-HeightSensorException HeightSensor::clearBuffer(int byteCount) {
-        timer.reset();
-        timer.start();
-
-        int i=0;
-        while(i<byteCount) {
-                if(USE_TIMEOUT == 1 && timer.read_ms() >= HEIGHT_SENSOR_CLEAR_BUFFER_TIMEOUT)
-                        return HeightSensorException::timeout;
-                if(s->readable()) {
-                        s->getc();
-                        i++;
-                }
-        }
-        return HeightSensorException::noException;
-}
-
-/**
- * Waits for a reply from the height sensor
- * Returns an error code
- */
 HeightSensorException HeightSensor::waitForReply(uint8_t buffer[], int length) {
         timer.reset();
         timer.start();
@@ -352,7 +122,7 @@ HeightSensorException HeightSensor::waitForReply(uint8_t buffer[], int length) {
         int count = 0;
         while(count<length) {
                 if(USE_TIMEOUT == 1 && timer.read_ms() >= HEIGHT_SENSOR_RESPONSE_TIMEOUT)
-                        return HeightSensorException::timeout;
+                        // return HeightSensorException::timeout;
                 if(s->readable()) {
                         buffer[count] = (uint8_t) s->getc();
                         count++;
@@ -363,104 +133,12 @@ HeightSensorException HeightSensor::waitForReply(uint8_t buffer[], int length) {
         uint16_t messageCrc = toUint16(buffer[length-1], buffer[length-2]);
         // Calculate CRC on all fields, except the CRC fields
         uint16_t crc = CRC16(buffer, length-2);
-        if(messageCrc != crc) {
-                return HeightSensorException::crc;
-        }
+        // if(messageCrc != crc) {
+        //         return HeightSensorException::crc;
+        // }
 
-        return HeightSensorException::noException;
+        // return HeightSensorException::noException;
 
-}
-
-
-
-HeightSensorException HeightSensor::getRequestedSettings(){
-        uint8_t buffer[HEIGHT_SENSOR_GET_SETTINGS_BUFFER_LENGTH];
-        HeightSensorException waitForReplyException = waitForReply(buffer, HEIGHT_SENSOR_GET_SETTINGS_BUFFER_LENGTH);
-        if(waitForReplyException != HeightSensorException::noException) {
-                return waitForReplyException;
-        }
-
-        // Check if the message was correct
-        if(
-                buffer[HEIGHT_MESSAGE_SETTINGS_RESPONSE_ADDRESS] != HEIGHT_MESSAGE_REQUEST_SETTINGS_ADDRESS ||
-                buffer[HEIGHT_MESSAGE_SETTINGS_RESPONSE_FUNC_CODE] != HEIGHT_MESSAGE_REQUEST_SETTINGS_FUNC_CODE ||
-                buffer[HEIGHT_MESSAGE_SETTINGS_RESPONSE_BYTE_COUNT] != 10
-                ) {
-                return HeightSensorException::wrongMessage;
-        }
-
-        filters = toUint16(buffer[HEIGHT_MESSAGE_SETTINGS_RESPONSE_FILTERS_MSB],buffer[HEIGHT_MESSAGE_SETTINGS_RESPONSE_FILTERS_LSB]);
-        numberOfSamplesToBeAveraged = buffer[HEIGHT_MESSAGE_SETTINGS_RESPONSE_NUMBER_OF_SAMPLES_TO_BE_AVERAGED];
-        interval = toUint32(buffer[HEIGHT_MESSAGE_SETTINGS_RESPONSE_INTERVAL_MSW_MSB],buffer[HEIGHT_MESSAGE_SETTINGS_RESPONSE_INTERVAL_MSW_LSB],buffer[HEIGHT_MESSAGE_SETTINGS_RESPONSE_INTERVAL_LSW_MSB],buffer[HEIGHT_MESSAGE_SETTINGS_RESPONSE_INTERVAL_LSW_LSB]);
-        transmittedPulses = toUint16(buffer[HEIGHT_MESSAGE_SETTINGS_RESPONSE_PULSES_MSB],buffer[HEIGHT_MESSAGE_SETTINGS_RESPONSE_PULSES_LSB]);
-
-        return HeightSensorException::noException;
-}
-
-
-HeightSensorException HeightSensor::parse(float *height){
-        uint16_t rawHeight = 0;
-        int length = HEIGHT_SENSOR_GET_HEIGHT_BUFFER_LENGTH;
-        // Check CRC
-        // Merge MSB and LSB of CRC from the message
-        uint16_t messageCrc = toUint16(senixBuffer[length-1], senixBuffer[length-2]);
-        // Calculate CRC on all fields, except the CRC fields
-        uint16_t crc = CRC16(senixBuffer, length-2);
-        if(messageCrc != crc) {
-                return HeightSensorException::crc;
-        }
-
-        // Check if the message was correct
-        if(
-                senixBuffer[HEIGHT_MESSAGE_RESPONSE_ADDRESS] != HEIGHT_MESSAGE_REQUEST_ADDRESS ||
-                senixBuffer[HEIGHT_MESSAGE_RESPONSE_FUNCTION] != HEIGHT_MESSAGE_REQUEST_FUNC_CODE ||
-                senixBuffer[HEIGHT_MESSAGE_RESPONSE_BYTE_COUNT] != 2
-                ) {
-                return HeightSensorException::wrongMessage;
-        }
-
-        // merge MSB and LSB of raw height data
-        rawHeight = toUint16(senixBuffer[HEIGHT_MESSAGE_RESPONSE_VALUE_MSB], senixBuffer[HEIGHT_MESSAGE_RESPONSE_VALUE_LSB]);
-        if(rawHeight == HEIGHT_SENSOR_ERROR_OUTPUT) {
-                return HeightSensorException::sensor;
-        }
-        *height = rawHeightToMeters(rawHeight);
-        return HeightSensorException::noException;
-}
-
-HeightSensorException HeightSensor::ASCIIStreamRead(){
-        char ASCIIStreamBuffer[20];
-
-        timer.reset();
-        timer.start();
-
-
-        int count = 0;
-        while(1<2) {
-                if(USE_TIMEOUT == 1 && timer.read_ms() >= HEIGHT_SENSOR_ASCII_TIMEOUT)
-                        return HeightSensorException::timeout;
-
-                if (s->readable()) {
-                        uint8_t p = s->getc();
-                        ASCIIStreamBuffer[count] = p;
-                        count++;
-                        if (p==0x0D) {
-                                ASCIIStreamBuffer[count] = '\0';
-                                break;
-                        }
-                }
-
-        }
-        if(count != 6) {
-                return HeightSensorException::wrongMessage;
-        }
-        char * buf = ASCIIStreamBuffer + count - HEIGHT_SENSOR_ASCII_BUFFER_LENGTH;
-        float rawHeight = atof(buf);
-        if(rawHeight==0) {
-                return HeightSensorException::sensor;
-        }
-        this->height = rawHeightToMeters(rawHeight);
-        return HeightSensorException::noException;
 }
 
 
@@ -513,6 +191,3 @@ uint16_t HeightSensor::CRC16(uint8_t *nData, uint16_t wLength) {
         }
         return wCRCWord;
 }
-
-
-} /* namespace sbt */

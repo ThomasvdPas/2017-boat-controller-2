@@ -12,5 +12,4 @@
 
 #ifdef DEBUG
 MODSERIAL pc(PA_9, PA_10,100,100); //& PA_9 = D8, PA_10 = D2
-Mutex pcMutex;
 #endif
