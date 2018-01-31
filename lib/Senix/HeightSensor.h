@@ -39,7 +39,7 @@ uint16_t stat_tptp;  // Senix pulse timeout per 10 pulses
 Timer ageTimer;
 
 // thread objects
-uint8_t buffer[8];
+uint16_t buffer;
 
 // Exceptions (objects & functions)
 Timer timer;
@@ -52,7 +52,7 @@ float getHeight();
 int getAge();
 void thread (void const *TID);
 uint16_t CRC16(uint8_t *nData, uint16_t wLength);
-HeightSensorException waitForReply(uint8_t buffer[], int length);
+HeightSensorException waitForReply(uint16_t buffer);
 
 
 };
