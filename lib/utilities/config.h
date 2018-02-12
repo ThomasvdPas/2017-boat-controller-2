@@ -8,7 +8,7 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
-#define XSENS_BAUD_RATE       115200
+#define XSENS_BAUD_RATE       460800
 #define SENIX_BAUD_RATE   38400
 
 // Buffer Xsens
