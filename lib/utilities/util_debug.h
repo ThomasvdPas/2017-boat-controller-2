@@ -15,10 +15,16 @@
 
 #ifdef DEBUG
 	#define PRINT(...) pc.baud(57600); \
-	pc.printf(__VA_ARGS__);\
-	pc.printf("\r");
+	pc.printf(__VA_ARGS__);
 #else
 	#define PRINT(...)
 #endif
 
 #endif /* DEBUG_H_ */
+
+/*TODO: was:
+#define PRINT(...) pc.baud(57600); \
+pc.printf("\r");\
+pc.printf(__VA_ARGS__);\
+pc.printf("\n");
+*/

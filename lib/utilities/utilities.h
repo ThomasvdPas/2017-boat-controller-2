@@ -13,7 +13,7 @@
 #include "util_debug.h"
 #include "bit_operations.h"
 #include "exceptions.h"
-#include "../MODSERIAL/MODSERIAL.h"
+#include "MODSERIAL.h"
 
 #define PI         3.14159265
 #define ANGLE_TO_QC      39614

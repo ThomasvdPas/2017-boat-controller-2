@@ -13,31 +13,26 @@ enum class GeneralException : uint8_t {
 };
 
 enum class XsensException : uint8_t {
-	noExcpetion = 1,
+	noException,
 	timeout,
-
 	wrongMessageHeader,
 	checksum,
-
 	messageTooLarge,
-
 	errorMessageReceived,
-
 	xsensPeriodSentInvalidRange,
 	xsensMessageSentInvalid,
 	xsensTimerOverflow,
 	xsensBaudRateInvalidRange,
-	xsensParameterSentInvalid
+	xsensParameterSentInvalid,
+	messageBuffered,
 };
 
 enum class HeightSensorException : uint8_t {
-	noExcpetion,
+	noException,
 	timeout,
-
 	sensor,
 	crc,
 	wrongMessage,
-
 	setFilters,
 	setNumberOfSamplesToBeAveraged,
 	setInterval,
@@ -47,7 +42,6 @@ enum class HeightSensorException : uint8_t {
 enum class MaxonMotorException : uint8_t {
 	noException,
 	timeout,
-
 	setHomingOperation,
 	setCurrentTreshold,
 	setHomingSpeed,
@@ -57,25 +51,18 @@ enum class MaxonMotorException : uint8_t {
 	setShutDown,
 	setSwitchOn,
 	setStartHoming,
-
 	setPositionProfileOperation,
 	setPositionOperation,
 	setTarget,
-
 	positionModeSettingValue,
-
 	maskReadyToSwitchOn,
 	maskOperationEnable,
 	maskHomeReached,
 	maskFault,
-
 	setResetFault,
-
 	maxonSpecificException,
-
 	targetSetTooHigh,
 	targetSetTooLow,
-
 	setAcceleration,
 	setDeceleration,
 	setMaxFollowingError,

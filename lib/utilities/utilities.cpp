@@ -9,7 +9,7 @@
 #include <algorithm>
 #include "mbed.h"
 #include "utilities.h"
-#include "../MODSERIAL/MODSERIAL.h"
+#include "MODSERIAL.h"
 
 
 
