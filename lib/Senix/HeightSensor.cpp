@@ -25,7 +25,7 @@ void HeightSensor::thread() {
              double buffer;
              if(this->senix->readable()) {
                       this->senix->scanf("%lf", &buffer);
-                      PRINT("%lf", rawHeightToMeters(buffer));
+                      PRINT("%lf\n\r", rawHeightToMeters(buffer));
              }
 
 

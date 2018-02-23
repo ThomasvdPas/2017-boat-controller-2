@@ -34,7 +34,7 @@ Xsens::Xsens(MODSERIAL* xsens) : _serial(xsens){
 // }
 
 void Xsens::thread() {
-        PRINT("Xsens thread started\n\r");
+        PRINT("\rXsens thread started\n");
 
         XsensDataParser xdp(&(this->xsensData));
         XsensException xe;
@@ -47,13 +47,16 @@ void Xsens::thread() {
 
         while(1) {
                 XsensException xsensException = receiveMessage(buffer, &bufferLength, bufferSize);
-                PRINT("\r\n%d", xsensException);
+                // for( int i = 0; i < bufferLength; i++){
+                //       PRINT("%02x ", buffer[i]);
+                // }
+                // PRINT("\n\r");
                 if(xsensException == XsensException::noException) {
                         if(buffer[XSENS_MESSAGE_POSITION_MID] == XSENS_MESSAGE_MTDATA2) {
                                 xdp.parse(buffer, bufferLength);
                         }
                         else if(buffer[XSENS_MESSAGE_POSITION_MID] == XSENS_MESSAGE_ERROR) {
-                                xep.parse(buffer, bufferLength);
+                                // xep.parse(buffer, bufferLength);
                                 PRINT("%i", xe);
                         }else{PRINT("What to do next?");}
                 }
@@ -76,12 +79,12 @@ XsensException Xsens::receiveMessage(uint8_t buffer[], uint8_t* bufferCount, uin
         while(1) {
 
                 if(USE_TIMEOUT == 1 && timer.read_ms() >= XSENS_DEFAULT_TIMEOUT) {
-                        return XsensException::timeout;
+                        // return XsensException::timeout;        \\TODO: Add timeout
                 }
                 if(_serial->readable()) {
-                        uint8_t c = (uint8_t) _serial->getc();
+                        uint8_t mes = (uint8_t) _serial->getc();
                         //PRINT("%02x \r\n", c & 0xFF);
-                        if(preambleFound == false && c ==XSENS_MESSAGE_PREAMBLE) {
+                        if(preambleFound == false && mes ==XSENS_MESSAGE_PREAMBLE) {
                                 preambleFound = true;
                         }
 
@@ -91,16 +94,16 @@ XsensException Xsens::receiveMessage(uint8_t buffer[], uint8_t* bufferCount, uin
                                         return XsensException::messageTooLarge;
                                 }
                                 // length if not extended
-                                if(*bufferCount == 3 && c != XSENS_MESSAGE_USE_EXTENDED_LENGTH) {
-                                        length = c;
+                                if(*bufferCount == 3 && mes != XSENS_MESSAGE_USE_EXTENDED_LENGTH) {
+                                        length = mes;
                                 }
                                 // length if extended
                                 if(*bufferCount == 4 && buffer[3] == XSENS_MESSAGE_USE_EXTENDED_LENGTH) {
-                                        length = c << 8;
+                                        length = mes << 8;
                                         headerCsLength = 6;
                                 }
                                 if(*bufferCount == 5 && buffer[3] == XSENS_MESSAGE_USE_EXTENDED_LENGTH) {
-                                        length |= (uint16_t) c;
+                                        length |= (uint16_t) mes;
                                 }
 
                                 if (*bufferCount > bufferSize) {
@@ -108,10 +111,10 @@ XsensException Xsens::receiveMessage(uint8_t buffer[], uint8_t* bufferCount, uin
                                         // TODO voordat je returnt eerst de buffer leeg lezen
                                         return XsensException::messageTooLarge;
                                 }
-                                buffer[*bufferCount] = c;
+                                buffer[*bufferCount] = mes;
                                 // skip preamble in checksum calculation
                                 if(*bufferCount > 0) {
-                                        sum += c;
+                                        sum += mes;
                                 }
                                 (*bufferCount)++;
 
@@ -140,7 +143,6 @@ XsensException Xsens::receiveMessage(uint8_t buffer[], uint8_t* bufferCount, uin
 
         // Check checksum
         if(sum != 0) {
-                PRINT("\r\n%02x\r\n", sum);
                 return XsensException::checksum;
         }
 
