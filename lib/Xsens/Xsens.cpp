@@ -79,7 +79,7 @@ XsensException Xsens::receiveMessage(uint8_t buffer[], uint8_t* bufferCount, uin
         while(1) {
 
                 if(USE_TIMEOUT == 1 && timer.read_ms() >= XSENS_DEFAULT_TIMEOUT) {
-                        // return XsensException::timeout;        \\TODO: Add timeout
+                        return XsensException::timeout;        //TODO: Add timeout
                 }
                 if(_serial->readable()) {
                         uint8_t mes = (uint8_t) _serial->getc();

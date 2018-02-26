@@ -9,13 +9,18 @@
 #define HEIGHTSENSOR_H_
 
 #include "MODSERIAL.h"
+#include "exceptions.h"
 
 class HeightSensor {
 private:
-      MODSERIAL* senix;
+      MODSERIAL* _serial;
+      float height;
+
 public:
-      HeightSensor(MODSERIAL* senix);
+      HeightSensor(MODSERIAL*);
       void thread();
+
+      SenixException receiveMessage(double* buffer);
 };
 
 #endif /* HEIGHTSENSOR_H_ */

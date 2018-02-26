@@ -59,7 +59,7 @@ void XsensDataParser::parseGnssPvt(uint8_t mess[], int o) {
         data->altitude = toUint32(mess[o+36], mess[o+37], mess[o+38], mess[o+39]);
         data->velocity = toUint32(mess[o+60], mess[o+61], mess[o+62], mess[o+63])/1000.0f;
 
-        PRINT("lat/lon/alt/v: %f \t %f \t %f \t %f\n",data->latlon.lat,data->latlon.lon, data->altitude,data->velocity);
+        // PRINT("lat/lon/alt/v: %f \t %f \t %f \t %f\n",data->latlon.lat,data->latlon.lon, data->altitude,data->velocity);
 }
 
 void XsensDataParser::parseUtcTime(uint8_t mess[], int o) {
@@ -73,19 +73,18 @@ void XsensDataParser::parseUtcTime(uint8_t mess[], int o) {
         data->time.second = mess[o+10];
         data->time.flags = mess[o+11];
 
-        PRINT("\rUTC_TIME (yyyy:mm:dd HH:MM:SS:ms): %u:%i:%i \t %i:%i:%i:%lu \t flag: %i", \
-              data->time.year, data->time.month, data->time.day, \
-              data->time.hour, data->time.minute, data->time.second, data->time.ns, \
-              data->time.flags);
+        // PRINT("\rUTC_TIME (yyyy:mm:dd HH:MM:SS:ms): %u:%i:%i \t %i:%i:%i:%lu \t flag: %i", \
+        //       data->time.year, data->time.month, data->time.day, \
+        //       data->time.hour, data->time.minute, data->time.second, data->time.ns, \
+        //       data->time.flags);
 }
 
 void XsensDataParser::parseEulerAngles(uint8_t mess[], int o) {
         data->rotation.roll = toFloat(mess[o+3], mess[o+2], mess[o+1], mess[o]);
-//	PRINT(" pitch -> %2x %2x %2x %2x\n",mess[o+7], mess[o+6], mess[o+5], mess[o+4]);
         data->rotation.pitch = toFloat(mess[o+7], mess[o+6], mess[o+5], mess[o+4]);
         data->rotation.yaw = toFloat(mess[o+11], mess[o+10], mess[o+9], mess[o+8]);
-        PRINT("\tEulerAngles (Roll, Pitch, Yaw): %f \t %f \t %f \n", \
-              data->rotation.roll, data->rotation.pitch, data->rotation.yaw);
+        // PRINT("\tEulerAngles (Roll, Pitch, Yaw): %f \t %f \t %f \n", \
+        //       data->rotation.roll, data->rotation.pitch, data->rotation.yaw);
 }
 
 void XsensDataParser::parseAcceleration(uint8_t mess[], int o) {

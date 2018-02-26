@@ -50,7 +50,7 @@
 #define XSENS_MESSAGE_POSITION_BID  1
 #define XSENS_MESSAGE_POSITION_MID  2
 
-
+// Senix
 #define SENIX_STACK_SIZE   1024
 #define SMALL_STACK_SIZE   512
 #define HEIGHT_SENSOR_RESPONSE_TIMEOUT    50
@@ -60,12 +60,54 @@
 
 #define FILTER_OFFSET_D_DIFF_PERCENTAGE   1
 
-#define CAN_BUS_DESIRED_HEIGHT_ID     0x240
-#define REQUEST_DESIRED_HEIGHT_ID    0x242
+// CAN
+//Isr timers
+#define REPORT_TO_CAN_WAIT						0.5
+#define REPORT_STATUS_WAIT						0.5
+#define STEER_ANGLE_RATIO						0.2582f
 
-#define CAN_HEIGHT_SENSOR_NO_OF_SAMPLES_TO_BE_AVERAGED_ID 0x266
+#define REPORT_TO_CAN_LAT_LON_ID					0x220
+#define REPORT_TO_CAN_ALT_VELX_ID					0x221
+#define REPORT_TO_CAN_VELY_VELZ_ID					0x222
+#define REPORT_TO_CAN_ACCX_ACCY_ID					0x223
+#define REPORT_TO_CAN_ACCZ_PITCH_ID					0x224
+#define REPORT_TO_CAN_ROLL_YAW_ID					0x225
+#define REPORT_TO_CAN_ROTX_ROTY_ID					0x226
+#define REPORT_TO_CAN_ROTZ_ID						0x227
+#define REPORT_TO_CAN_TIME_ID						0x228
+#define REPORT_TO_CAN_HEIGHT_ID						0x229
+#define REPORT_TO_CAN_VELOCITY_BOAT_ID				0x22A
+#define REPORT_TO_CAN_VELO_ID						0X290
+#define REPORT_TO_CAN_CONTROLSYSTEM_OUTPUT_ID		0x22B
+#define WING_CONTROL_ERROR_CAN_ID					0x22C
+#define REPORT_TO_CAN_DESIRED_HEIGHT_AUTO_VALUE_ID	0x22D
+#define REPORT_TO_CAN_CURRENT_ANGLE_FRONT_ID		0x22E
+#define REPORT_TO_CAN_CURRENT_ANGLE_REAR_ID			0x232
+#define REPORT_TO_CAN_K_H_OUTPUT_ID					0x22F
+#define REPORT_TO_CAN_K_THETA_OUTPUT_ID				0x230
+#define REPORT_TO_CAN_K_Q_OUTPUT_ID					0x231
+#define REPORT_TO_CAN_BASEGAIN_OUTPUT_ID			0x233
 
-#define CAN_WRITE_DEFAULT_TIMEOUT_US   1500
+#define REPORT_TO_CAN_STATUS_FRONT_ID				0x279
+#define REPORT_TO_CAN_CONTROL_SYSTEM_HEIGHT_ID 0x247
+#define REPORT_TO_CAN_CONTROL_SYSTEM_HEIGHT_REAR_ID 0x248
+#define REPORT_TO_CAN_STATUS_REAR_ID				0X27A
+
+#define REPORT_TO_CAN_SENIX							0x500
+#define REPORT_TO_CAN_SENIX_STATISTICS				0x501 // 0x501+0 for node 1, and 0x501+1 for node 2
+#define REPORT_TO_CAN_MAXON							0x503 // 0x503+0 for node 1, and 0x503+1 for node 2
+#define REPORT_TO_CAN_PID_SENSORS					0x505
+#define REPORT_TO_CAN_PID_INPUTS					0x506
+#define REPORT_TO_CAN_PID_GAINS						0x507
+#define REPORT_TO_CAN_PID_OUT						0x508
+#define UPDATE_FROM_CAN								0x509
+#define REPORT_TO_CAN_STEERANGLE					0x50A
+#define REPORT_TO_CAN_SENSORPANIC					0x50B
+#define CAN_BUS_DESIRED_HEIGHT_ID 				0x240
+
+#define REQUEST_DESIRED_HEIGHT_ID				0x242
+#define CAN_WRITE_DEFAULT_TIMEOUT_US			1500
+
 
 #define DESIRED_HEIGHT_AUTO      0xFF
 
@@ -81,13 +123,34 @@
 
 #define TOTAL_ACCEPTED_CAN_IDS     13
 
+// MAXON calibration
+#define MAXON_NEUTRAL_POSITION	 -360000
+#define MAXON_MAX_NEGATIVE_ANGLE -620000
+#define MAXON_MAX_POSITIVE_ANGLE 0
+#define MAXON_NEXT_PITCH_MINIMAL_DISTANCE 500
+#define MAXON_MAXRAD			 0.3371f
+#define MAXON_MINRAD			 -0.2288f
+#define MAXON_ZEROLIFT_RAD		 -0.04f
+#define MAXON_TOTALRAD			 (MAXON_MAXRAD-MAXON_MINRAD)
+#define MAXON_POSITION_MARGIN	 50000
+
+
+//Statusbit layout
+#define StatusGPS 		0
+#define StatusHoming 	1
+#define StatusMaxon 	2
+#define StatusKalman 	3
+#define StatusAutoMode	4
+#define StatusRoll		5
+#define StatusGPSLoss 	6
 
 enum class CanErrorCategory : uint8_t {
 								general,
 								xsens,
 								heightsensor1,
 								heightsensor2,
-								maxonmotor
+								maxonmotor1,
+								maxonmotor2
 };
 
 typedef struct {

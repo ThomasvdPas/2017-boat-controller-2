@@ -27,7 +27,7 @@ enum class XsensException : uint8_t {
 	messageBuffered,
 };
 
-enum class HeightSensorException : uint8_t {
+enum class SenixException : uint8_t {
 	noException,
 	timeout,
 	sensor,
@@ -66,7 +66,8 @@ enum class MaxonMotorException : uint8_t {
 	setAcceleration,
 	setDeceleration,
 	setMaxFollowingError,
-	setVelocity
+	setVelocity,
+	neutralReached
 };
 
 enum class WriteCanException : uint8_t {
